@@ -1,0 +1,8 @@
+{
+  "attraction_id": "PRFZkGSVnM5d",
+  "name": "Sample Attraction",
+  "location": "Sample City",
+  "reviews": [
+    { "user": "Alice", "rating": 5, "text": "Great experience" }
+  ]
+}

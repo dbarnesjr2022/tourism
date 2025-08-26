@@ -36,7 +36,7 @@ def _rapidapi_headers(host_env_key: str) -> Dict[str, str]:
     return headers
 
 
-def _live_get(base_host: Optional[str], path: str = '/', params: Optional[Dict[str, str]] = None, retries: int = 3, backoff: float = 0.5, headers: Optional[Dict[str, str]] = None) -> Optional[Dict[str, Any]]:
+def _live_get(base_host: Optional[str], path: str = '/', params: Optional[Dict[str, str]] = None, retries: int = 3, backoff: float = 0.5, headers: Optional[Dict[str, str]] = None, allow_retry_after: bool = True) -> Optional[Any]:
     """Make a simple GET request to a RapidAPI host with retries.
 
     This function is intentionally minimal — the project currently uses a mock-first
@@ -65,20 +65,48 @@ def _live_get(base_host: Optional[str], path: str = '/', params: Optional[Dict[s
         try:
             with httpx.Client(timeout=10.0) as c:
                 resp = c.get(url, params=params or {}, headers=headers)
+
+                # Respect Retry-After for 429 responses when allowed
+                if resp.status_code == 429 and allow_retry_after:
+                    retry_after = resp.headers.get('Retry-After')
+                    try:
+                        wait = float(retry_after) if retry_after is not None else backoff * (2 ** (attempt - 1))
+                    except Exception:
+                        wait = backoff * (2 ** (attempt - 1))
+                    logger.warning('received 429, waiting %.1fs before retrying %s', wait, url)
+                    time.sleep(wait + random.uniform(0, 0.1))
+                    continue
+
+                # Retry on 5xx server errors
+                if 500 <= resp.status_code < 600:
+                    logger.warning('server error %d on %s', resp.status_code, url)
+                    if attempt < retries:
+                        delay = backoff * (2 ** (attempt - 1)) + random.uniform(0, 0.1)
+                        time.sleep(delay)
+                        continue
+                    else:
+                        logger.error('exhausted retries (server error) for %s', url)
+                        return None
+
                 resp.raise_for_status()
                 return resp.json()
+        except httpx.HTTPStatusError as exc:
+            logger.warning('HTTP error on attempt %d/%d for %s: %s', attempt, retries, url, exc)
+        except httpx.RequestError as exc:
+            logger.warning('Request failed on attempt %d/%d for %s: %s', attempt, retries, url, exc)
         except Exception as exc:
             logger.warning('live GET failed (attempt %d/%d) %s: %s', attempt, retries, url, exc)
-            if attempt < retries:
-                # exponential backoff with small jitter
-                delay = backoff * (2 ** (attempt - 1)) + random.uniform(0, 0.1)
-                time.sleep(delay)
-            else:
-                logger.error('exhausted retries for %s', url)
-                return None
+
+        if attempt < retries:
+            # exponential backoff with small jitter
+            delay = backoff * (2 ** (attempt - 1)) + random.uniform(0, 0.1)
+            time.sleep(delay)
+        else:
+            logger.error('exhausted retries for %s', url)
+            return None
 
 
-def _live_get_by_env(host_env_key: str, path: str = '/', params: Optional[Dict[str, str]] = None, retries: int = 3, backoff: float = 0.5) -> Optional[Dict[str, Any]]:
+def _live_get_by_env(host_env_key: str, path: str = '/', params: Optional[Dict[str, str]] = None, retries: int = 3, backoff: float = 0.5, paginate: bool = False, max_pages: int = 10) -> Optional[Any]:
     """Derive host and headers from environment and perform a live GET.
 
     This helper centralizes per-provider RapidAPI env usage so callers only
@@ -91,7 +119,86 @@ def _live_get_by_env(host_env_key: str, path: str = '/', params: Optional[Dict[s
     headers = _rapidapi_headers(host_env_key)
     # Respect per-provider minimum interval to avoid vendor throttling.
     _respect_rate_limit(host_env_key)
-    return _live_get(host, path=path, params=params, retries=retries, backoff=backoff, headers=headers)
+
+    if not paginate:
+        return _live_get(host, path=path, params=params, retries=retries, backoff=backoff, headers=headers)
+
+    # Generic safe pagination: collect up to max_pages of JSON pages.
+    aggregated: List[Dict[str, Any]] = []
+    current_params = dict(params or {})
+    page = 1
+    while page <= max_pages:
+        _respect_rate_limit(host_env_key)
+        resp = _live_get(host, path=path, params=current_params, retries=retries, backoff=backoff, headers=headers)
+        if not resp:
+            break
+
+        # Response may be dict or list; handle both safely
+        if isinstance(resp, dict):
+            resp_map = cast(Dict[str, Any], resp)
+            data = resp_map.get('data')
+            if isinstance(data, list):
+                aggregated.extend(cast(List[Dict[str, Any]], data))
+            else:
+                items = resp_map.get('items')
+                if isinstance(items, list):
+                    aggregated.extend(cast(List[Dict[str, Any]], items))
+                else:
+                    # append the dict as a single record and stop
+                    aggregated.append(resp_map)
+                    break
+        elif isinstance(resp, list):
+            aggregated.extend(cast(List[Dict[str, Any]], resp))
+        else:
+            aggregated.append(cast(Dict[str, Any], resp))
+            break
+
+        # Attempt to detect cursor/next-page hints
+        next_link = None
+        if isinstance(resp, dict):
+            resp_map = cast(Dict[str, Any], resp)
+            links = resp_map.get('links')
+            if isinstance(links, dict):
+                links_map = cast(Dict[str, Any], links)
+                next_link = resp_map.get('next') or links_map.get('next')
+            else:
+                next_link = resp_map.get('next')
+
+        if next_link and isinstance(next_link, str) and next_link.startswith('http'):
+            # fetch absolute next URL once and fold into aggregated results
+            next_resp = _live_get(next_link, path='/', params=None, retries=retries, backoff=backoff, headers=headers)
+            if not next_resp:
+                break
+            if isinstance(next_resp, dict):
+                next_map = cast(Dict[str, Any], next_resp)
+                data = next_map.get('data')
+                if isinstance(data, list):
+                    aggregated.extend(cast(List[Dict[str, Any]], data))
+                    page += 1
+                    continue
+                items = next_map.get('items')
+                if isinstance(items, list):
+                    aggregated.extend(cast(List[Dict[str, Any]], items))
+                    page += 1
+                    continue
+                aggregated.append(next_map)
+                break
+            elif isinstance(next_resp, list):
+                aggregated.extend(cast(List[Dict[str, Any]], next_resp))
+                page += 1
+                continue
+
+        # Simple page increment strategy when no absolute next_link was followed
+        page += 1
+        if 'page' in current_params:
+            try:
+                current_params['page'] = str(int(current_params.get('page', '1')) + 1)
+            except Exception:
+                current_params['page'] = str(page)
+        else:
+            current_params['page'] = str(page)
+
+    return {'items': aggregated}
 
 
 # Simple per-provider rate limiting state

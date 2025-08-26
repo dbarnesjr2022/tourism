@@ -1,0 +1,6 @@
+{
+  "restaurant_id": 304554,
+  "name": "Sample Bistro",
+  "cuisine": ["French"],
+  "ratings": { "overall": 4.2, "count": 128 }
+}

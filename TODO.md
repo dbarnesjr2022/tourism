@@ -1,6 +1,6 @@
 # TODOs: Tourism Intelligence SaaS Platform
 
-## 1. Project Setup & Structure
+## 1. Project setup & structure
 
 - [x] Create backend and frontend directory scaffolding
 - [x] Set up Python virtual environment and install dependencies
@@ -9,104 +9,134 @@
 
 ## 2. Backend API (FastAPI)
 
-- [x] Implement `/forecast` endpoint (done, mock)
-- [x] Implement `/pricing` endpoint (mock)
-- [x] Implement `/personas` endpoint (mock)
-- [x] Implement `/campaigns` endpoint (mock)
-- [x] Implement `/chatbot` endpoint (mock)
+- [x] Implement `/forecast` endpoint (mock/integrated tests)
+- [x] Implement `/pricing`, `/personas`, `/campaigns`, `/chatbot` (mock)
 
-- [x] Add Stripe billing integration (webhook handlers, subscription lifecycle, invoice failures)
-  - [x] Add CRM sync endpoints (HubSpot/Salesforce Lite)
-  - [x] Add cross-promotion endpoint for bundled offers
-  - [x] Add error handling and input validation
+- [x] Stripe billing integration (webhook handlers, subscription lifecycle, invoice failures)
+  - [x] CRM sync endpoints (HubSpot/Salesforce Lite)
+  - [x] Cross-promotion endpoint for bundled offers
+  - [x] Error handling and input validation
 
-- [x] Write unit tests for billing endpoints and webhooks
-  - Billing logic is robust, type/lint clean, and all tests pass (see `backend/tests/test_billing_webhooks.py`).
-  - Next: Expand test coverage for all endpoints and edge cases.
+- [x] Unit tests for billing endpoints and webhooks (see `backend/tests/test_billing_webhooks.py`)
 
-## 3. Data Pipelines & ETL
+## 3. Data pipelines & ETL
 
-- [x] Script to fetch Orlando/Kissimmee event calendars
-  - Implemented: see `backend/scripts/fetch_event_calendars.py`
-- [x] Script to fetch weather data (API)
-  - Implemented: see `backend/scripts/fetch_weather_data.py`
-- [x] Script to scrape OTA competitor prices (Booking, Expedia, Airbnb)
-  - Implemented: see `backend/scripts/fetch_competitor_prices.py`
-  - [ ] Implement robust live fetcher
-    - Add per-provider RapidAPI header wiring, secure key usage, and explicit host env vars
-    - Add retries/backoff and respectful rate-limiting (httpx or tenacity)
-    - Add unit tests that mock httpx responses
-  - [ ] Persist normalized competitor rows to PostgreSQL
-    - Define `competitor_prices` table and migration
-    - Implement writer function and idempotent/dedup ingestion
-    - Add tests for persistence and replayability
-  - [ ] Wire ETL scheduling and snapshots
-    - Ensure `schedule_etl_jobs.py` can run hourly/daily snapshots
-    - Add snapshot retention and S3/archive strategy for raw responses
-- [x] Script to ingest historical bookings (CSV/API)
-  - Implemented: see `backend/scripts/ingest_historical_bookings.py`
-- [x] Store raw and processed data in PostgreSQL
-  - Implemented: see `backend/scripts/store_data_postgres.py`
-- [x] Schedule ETL jobs (cron or serverless)
-  - Implemented: see `backend/scripts/schedule_etl_jobs.py`
+- [x] Event calendar fetcher (Orlando/Kissimmee) — `backend/scripts/fetch_event_calendars.py`
+- [x] Weather data fetcher — `backend/scripts/fetch_weather_data.py`
+- [x] Competitor price fetcher (mock-first) — `backend/scripts/fetch_competitor_prices.py`
+  - [x] Added mock fixtures under `data/raw/rapidapi/` and unit tests
+  - [x] Implemented conservative live-mode helpers: httpx GET wrapper, per-provider header helper, jittered exponential backoff, and simple per-provider rate limiter
+  - [x] Provider-specific fetch functions call live helper only when explicit `--live`/env keys are provided
+  - [x] Added SQLAlchemy `CompetitorPrice` model and `backend/scripts/store_competitor_prices.py` writer (persistence prototype)
+  - [x] Unit + integration tests added for fetcher and writer; tests pass locally
+  - [ ] Robust live fetcher hardening (provider pagination, retries per-status, request batching)
+  - [ ] Add Alembic migration and production-ready `competitor_prices` table
+  - [ ] ETL scheduling, snapshot retention, and raw response archival (S3)
 
-## 4. ML Models & Services
+- [x] Ingest historical bookings — `backend/scripts/ingest_historical_bookings.py`
+- [x] Store raw/processed data in PostgreSQL — `backend/scripts/store_data_postgres.py`
+- [x] ETL scheduler script exists — `backend/scripts/schedule_etl_jobs.py`
+  - [ ] Add Alembic migration and finalize `competitor_prices` schema (in progress — see `backend/migrations/0001_create_competitor_prices.py`)
 
-- [x] Implement MVP demand forecasting (Prophet)
-  - Implemented: see `backend/scripts/forecast_demand.py`
-- [x] Implement dynamic pricing model (regression/Bayesian optimization)
-  - Implemented: see `backend/scripts/dynamic_pricing.py`
-- [x] Implement persona clustering (K-Means/DBSCAN)
-  - Implemented: see `backend/scripts/persona_clustering.py`
-- [x] Integrate LLM for persona descriptions (OpenAI/Claude API)
-- [x] Integrate LLM for campaign generation (email/social/postcard copy)
-- [x] Add model evaluation and retraining scripts
+## 4. ML models & services
 
-## 5. Frontend Dashboard (Next.js)
+- [x] MVP demand forecasting — `backend/scripts/forecast_demand.py`
+- [x] Dynamic pricing scripts — `backend/scripts/dynamic_pricing.py`
+- [x] Persona clustering — `backend/scripts/persona_clustering.py`
+- [x] LLM integrations (persona descriptions & campaign generation) — prototype scripts exist
+- [x] Model evaluation & retraining scripts
+
+## 5. Frontend dashboard (Next.js)
+
+_Work in progress — frontend repo and tests exist; dashboard pages and components remain to be completed._
 
 ## 6. Integrations
 
-[x] Write frontend unit/integration tests
-
-[x] Stripe billing setup and test
-Webhook handlers for subscription events and invoice.payment_failed implemented in `backend/app/api/billing.py`.
-
-[ ] Write frontend unit/integration tests
-Tests pass: `backend/tests/test_billing.py` and `backend/tests/test_billing_webhooks.py`.
-Billing code is robust and type/lint clean.
-[ ] HubSpot/Salesforce Lite CRM sync
-[x] Chatbot widget integration (custom or third-party)
-[x] Email/SMS/postcard campaign delivery (SendGrid/Twilio/Lob)
+- [x] Frontend unit/integration tests (some coverage under `frontend/__tests__`)
+- [x] Stripe billing and webhook handlers — `backend/app/api/billing.py`
+- [x] Chatbot widget integration (component scaffolded)
+- [x] Email/SMS/postcard delivery integrated at prototype level
 
 ## 7. Deployment & DevOps
 
-- [ ] Set up Vercel for frontend hosting
-- [x] Set up AWS Lambda for backend ML inference
-- [ ] Set up AWS RDS/PostgreSQL for production DB
-- [ ] Set up CI/CD pipelines (GitHub Actions)
-- [ ] Set up environment variables and secrets management
-- [ ] Set up logging and monitoring (Sentry/CloudWatch)
-
-Notes:
-
-- CI workflow added: `.github/workflows/ci.yml` runs ruff + pytest for `backend`.
-
-- Ruff config added to root `pyproject.toml`.
-
-- README and Makefile additions for local dev in `backend/README.md`.
+- [x] CI workflow added: `.github/workflows/ci.yml` runs ruff + pytest for backend
+- [x] Ruff config present in `pyproject.toml`
+- [x] `backend/.env.example` and `.gitignore` guidance added to avoid committing secrets
+- [ ] Add Vercel for frontend (pending)
+- [ ] AWS RDS/Postgres production deployment (pending)
+- [ ] Harden CI/CD (deploy steps, secret handling, and verifications)
+- [ ] Logging & monitoring (Sentry/CloudWatch)
 
 ## 8. Documentation
 
-- [ ] Write architecture overview
-- [ ] Write API documentation (OpenAPI/Swagger)
-- [ ] Write data pipeline documentation
-- [ ] Write ML model documentation
-- [ ] Write onboarding guide for pilot businesses
-- [ ] Write user help docs and FAQ
+- [ ] Architecture overview
+- [ ] API documentation (OpenAPI/Swagger)
+- [ ] Data pipeline docs
+- [ ] ML model docs
+- [ ] Onboarding guide for pilot businesses
+- [ ] User help docs and FAQ
 
-## 9. Pilot & Iteration
+## 9. Pilot & iteration
 
-- [ ] Onboard 3–5 pilot businesses
-- [ ] Collect feedback and usage data
-- [ ] Refine models, personas, and UX based on feedback
-- [ ] Prepare for public launch
+- [ ] Onboard pilot customers
+- [ ] Collect feedback and iterate on models and UX
+
+## Recent changes (delta)
+
+- Implemented mock-first competitor ingestion in Python and TypeScript prototypes.
+- Added live-mode httpx helper, jittered backoff, and a per-provider rate limiter.
+- Added SQLAlchemy `CompetitorPrice` model and a writer script.
+- Added unit and integration tests for fetcher + persistence; local test run: `15 passed`.
+- Added CI workflow (`.github/workflows/ci.yml`) to run ruff + pytest.
+- Added `.env.example` and `.gitignore` entries to avoid committing secrets.
+
+## Current blocker
+
+- GitHub push-protection flagged historical commits that include an OpenAI API key. Remote pushes are rejected until the leaked secret is revoked/rotated and the repository history is sanitized or a clean branch is created from `origin/main` and pushed.
+
+Action required: revoke/rotate the exposed key in the provider dashboard (OpenAI) immediately, then either:
+
+- create a sanitized branch from `origin/main` and reapply changes (recommended), or
+- rewrite history to remove secrets (git-filter-repo / BFG) and force-push cleaned branches (requires coordination with collaborators).
+
+## Next actions (priority ordered)
+
+1. Revoke/rotate the leaked OpenAI key (user action, critical).
+2. Create a sanitized branch from `origin/main`, copy only the cleaned files, and push — open a draft PR to run CI on GitHub.
+3. Add missing repository secrets in GitHub (DATABASE_URL, VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID) and fix `ci.yml` if needed.
+4. Add Alembic migration and finalize `competitor_prices` schema.
+5. Harden live fetcher: provider-specific pagination, robust error handling, and higher-quality normalization.
+6. Implement ETL schedule + snapshot retention + raw response archival (S3).
+
+## Requirements coverage checklist
+
+- Competitor ingestion implemented (mock + live helpers): Done (partial live hardening required)
+- Persistence prototype (model + writer + tests): Done
+- Tests & CI: Done locally; CI added but remote runs blocked until push-protection issue resolved
+- Secrets handling: `.env.example` added; historical secret must be revoked to proceed with remote PRs
+
+If you want, I can create the sanitized branch locally and prepare a commit that excludes the offending files, then attempt the push once you confirm the leaked key is rotated or you give permission to proceed with history rewrite.
+    - Added `.env.example` and `.gitignore` entries to avoid committing secrets.
+
+    ## Current blocker
+    - GitHub push-protection flagged historical commits that include an OpenAI API key. Remote pushes are rejected until the leaked secret is revoked/rotated and the repository history is sanitized or a clean branch is created from `origin/main` and pushed.
+
+    Action required: revoke/rotate the exposed key in the provider dashboard (OpenAI) immediately, then either:
+    - create a sanitized branch from `origin/main` and reapply changes (recommended), or
+    - rewrite history to remove secrets (git-filter-repo / BFG) and force-push cleaned branches (requires coordination with collaborators).
+
+    ## Next actions (priority ordered)
+    1. Revoke/rotate the leaked OpenAI key (user action, critical).
+    2. Create a sanitized branch from `origin/main`, copy only the cleaned files, and push — open a draft PR to run CI on GitHub.
+    3. Add missing repository secrets in GitHub (DATABASE_URL, VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID) and fix `ci.yml` if needed.
+    4. Add Alembic migration and finalize `competitor_prices` schema.
+    5. Harden live fetcher: provider-specific pagination, robust error handling, and higher-quality normalization.
+    6. Implement ETL schedule + snapshot retention + raw response archival (S3).
+
+    ## Requirements coverage checklist
+    - Competitor ingestion implemented (mock + live helpers): Done (partial live hardening required)
+    - Persistence prototype (model + writer + tests): Done
+    - Tests & CI: Done locally; CI added but remote runs blocked until push-protection issue resolved
+    - Secrets handling: `.env.example` added; historical secret must be revoked to proceed with remote PRs
+
+    If you want, I can create the sanitized branch locally and prepare a commit that excludes the offending files, then attempt the push once you confirm the leaked key is rotated or you give permission to proceed with history rewrite.

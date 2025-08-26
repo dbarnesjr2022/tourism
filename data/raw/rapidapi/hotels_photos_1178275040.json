@@ -1,0 +1,8 @@
+{
+  "hotel_id": "1178275040",
+  "name": "Mock Hotel",
+  "price": 123.45,
+  "rates": [
+    {"price": 123.45}
+  ]
+}

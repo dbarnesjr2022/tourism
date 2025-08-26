@@ -1,0 +1,7 @@
+{
+  "city": "Seattle",
+  "cars": [
+    { "make": "Toyota", "model": "Camry", "price_per_day": 45 },
+    { "make": "Ford", "model": "Focus", "price_per_day": 40 }
+  ]
+}
