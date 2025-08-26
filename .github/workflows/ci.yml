@@ -2,117 +2,45 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ "main", "master", "ci/*", "*" ]
   pull_request:
-    branches: [main]
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  NODE_VERSION: '20'
-  PNPM_VERSION: '9'
-  # Put non-secret envs that apply to all jobs here
+    branches: [ "main", "master" ]
 
 jobs:
-  test:
-    name: Build, Lint, Typecheck, Unit + E2E
+  backend:
+    name: Backend checks
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: appdb
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/appdb
-      # Add any test-only envs here (safe, non-secret)
-
+    strategy:
+      matrix:
+        python-version: [3.10]
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Cache pip
+        uses: actions/cache@v4
         with:
-          version: ${{ env.PNPM_VERSION }}
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install ruff
 
-      - name: Generate Prisma
-        run: pnpm prisma generate
+      - name: Lint with ruff
+        run: |
+          ruff check backend
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm -w ts:check || pnpm tsc --noEmit
-
-      - name: Unit tests (Vitest)
-        run: pnpm test:unit -- --run
-
-      - name: Build
-        run: pnpm build
-
-      - name: Install Playwright
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: E2E (Playwright - chromium)
-        env:
-          CI: 'true'
-        run: pnpm test:e2e -- --project=chromium --reporter=dot
-
-  deploy:
-    name: Deploy to Vercel (main)
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm prisma migrate deploy
-
-      - name: Vercel Deploy
-        uses: vercel/actions/deploy@v3
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: .
-          prod: true
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          pytest -q

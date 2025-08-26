@@ -1,0 +1,47 @@
+[
+  {
+    "kmeans_cluster": 0,
+    "age_group": "25-34",
+    "travel_type": "Family",
+    "budget": "Mid",
+    "interests": [
+      "Theme Parks",
+      "Shopping",
+      "Dining"
+    ],
+    "origin": "USA",
+    "booking_channel": "OTA",
+    "avg_stay_nights": 5,
+    "llm_description": "[Error generating description: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}]"
+  },
+  {
+    "kmeans_cluster": 1,
+    "age_group": "35-44",
+    "travel_type": "Couple",
+    "budget": "High",
+    "interests": [
+      "Luxury Resorts",
+      "Golf",
+      "Fine Dining"
+    ],
+    "origin": "UK",
+    "booking_channel": "Direct",
+    "avg_stay_nights": 7,
+    "llm_description": "[Error generating description: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}]"
+  },
+  {
+    "kmeans_cluster": 2,
+    "age_group": "18-24",
+    "travel_type": "Solo",
+    "budget": "Low",
+    "interests": [
+      "Nightlife",
+      "Adventure Sports",
+      "Local Culture"
+    ],
+    "origin": "Brazil",
+    "booking_channel": "OTA",
+    "avg_stay_nights": 3,
+    "llm_description": "[Error generating description: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}]"
+  }
+]

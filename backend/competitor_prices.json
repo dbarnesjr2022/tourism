@@ -1,0 +1,27 @@
+[
+  {
+    "source": "booking",
+    "id": 1178275040,
+    "price": null
+  },
+  {
+    "source": "booking_attractions",
+    "id": "PRFZkGSVnM5d",
+    "name": "Sample Attraction"
+  },
+  {
+    "source": "priceline",
+    "city": "Seattle",
+    "price_per_day": 45
+  },
+  {
+    "source": "priceline",
+    "city": "Seattle",
+    "price_per_day": 40
+  },
+  {
+    "source": "tripadvisor",
+    "id": 304554,
+    "name": "Sample Bistro"
+  }
+]
